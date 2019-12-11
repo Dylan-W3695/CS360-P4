@@ -14,6 +14,10 @@ void storeKeyAndValue(string store_key, string value);
 void storeKeyAndFileContents(string store_key, string file);
 string retrieveKeyValue(string retrieve_key);
 string retrieveKeyAndCopyToFile(string retreive_key, string file);
+int openWriteFile(string file);
+
+string keyFile = ".keys";
+string valueFile = ".values";
 
 int main(int argc, char** argv)
 {
@@ -187,19 +191,33 @@ queue<string> handleArgs(int argc, char** argv){
 
   return argQueue;
 }
+
+int openWriteFile(string file){
+    int wFileDescriptor = open(file, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
+    if (wFileDescriptor < 0){
+	cerr << "failed to open " << file;
+	exit(EXIT_FAILURE);
+    }
+    return wFileDescriptor;
+}
   
 void storeKeyAndValue(string store_key,string value)
 {
   cout << "Reached store Key and Value" << endl;
+  int keyFileDescriptor = openWriteFile(keyFile);
+  int valueFileDescriptor = openWriteFile(valueFile);
 }
+
 void storeKeyAndFileContents(string store_key,string file)
 {
   cout << "Reached store Key and File" <<endl; 
 }
+
 string retrieveKeyValue(string retrieve_key)
 {
   cout << "reached retrieve Key and Value," << endl; 
 }
+
 string retrieveKeyAndCopyToFile(string retreive_key,string  file)
 {
   cout << "reached retrieve key and file" << endl;
