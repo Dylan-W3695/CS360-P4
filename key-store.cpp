@@ -19,6 +19,8 @@ void storeKeyAndFileContents(string store_key, string file);
 string retrieveKeyValue(string retrieve_key);
 string retrieveKeyAndCopyToFile(string retreive_key, string file);
 int openWriteFile(string file);
+int readKeyFile(string keyFileDescriptor, string key );
+string getValue(string valueFileDescriptor, int line_number);
 
 string keyFile = ".keys";
 string valueFile = ".values";
@@ -236,7 +238,7 @@ void storeKeyAndValue(string store_key,string value)
 
 
   int valueLength = value.length();
-  char value_array[valueLength + 1];
+  char value_array[valueLength];
   strcpy(value_array, value.c_str());
 
   for(int i = 0; i < valueLength; i ++){
@@ -247,8 +249,8 @@ void storeKeyAndValue(string store_key,string value)
       }
   }
 
-  write(keyFileDescriptor, "\n", 2);
-  write(valueFileDescriptor, "\n", 2);
+   write(keyFileDescriptor, "\n", 1);
+   write(valueFileDescriptor, "\n", 1);
 
   
   close(keyFileDescriptor);
@@ -282,7 +284,136 @@ void storeKeyAndFileContents(string store_key,string file)
 
 string retrieveKeyValue(string retrieve_key)
 {
-  cout << "reached retrieve Key and Value," << endl; 
+  
+  //int keyFileDescriptor = openWriteFile(keyFile);
+  // int valueFileDescriptor = openWriteFile(valueFile);
+
+  //First, find the .key value in .keys, and count how many newlines down the file it is  
+  int line_number;
+  line_number = readKeyFile(keyFile, retrieve_key);
+
+  //Then, get the value that is line_number newlines down inside the .values file
+  string value = getValue(valueFile, line_number);
+
+  
+  cout << "reached retrieve Key and Value," << endl;
+  cout << endl << "I've retrieved the following value associated with " << retrieve_key << " : "  <<  value << endl;
+  return value;
+}
+
+int readKeyFile(string keyFileDescriptor, string key )
+{
+  int line_number = -1;
+  
+  // Open, read, and copy the picture
+  // Open bunny.jpg then copy it into bunny_copy.jpg
+  char textBuffer;
+
+  // Open the file
+  int textID = open(keyFileDescriptor.c_str(), O_RDONLY|O_LARGEFILE);
+  if( textID < 0)
+    {
+      perror("Failed to open .keys file.");
+      exit(EXIT_FAILURE);
+    }
+
+ 
+  // Read and copy the file
+  ssize_t bytesRead;
+  string line_so_far;
+  bool still_searching = true;
+  
+  while( bytesRead = read(textID, &textBuffer, sizeof(char)) > 0 && still_searching)
+    {
+      /* while(textbuffer != "\n")
+	 {
+	    push char to string
+	    
+	 }
+	 compare string to key
+	 increment line_number
+	 
+       */
+
+      while(textBuffer != '\n')
+	{
+	  // While we haven't reached a newline, append current char to line_so_far 
+	  line_so_far += textBuffer;
+
+	  //If we reach the end of the file while inside this loop, break
+	  if(read(textID, &textBuffer, sizeof(char)) == 0)    break;
+	}
+      
+      if(!line_so_far.compare(key) == 0)
+	{
+	  // We've reached a new line and the line we have is NOT the key,
+	  // so increment line_number and reset line_so_far
+	  line_number++;
+	  line_so_far = "";
+	}
+      else
+	{
+	  still_searching = false;
+	}
+    }  
+
+
+  if(bytesRead < 0)
+    {
+      perror("Failed to read .keys file.");
+      exit(EXIT_FAILURE);
+    }
+
+  close(textID);
+  return line_number;
+}
+
+string getValue(string valueFileDescriptor, int line_number)
+{ 
+  int wValueFileDescriptor = openWriteFile(valueFile);
+  char textBuffer;
+  
+  int textID = open(valueFileDescriptor.c_str(), O_RDONLY|O_LARGEFILE);
+  if( textID < 0)
+    {
+      perror("Failed to open .values file.");
+      exit(EXIT_FAILURE);
+    }
+
+ 
+  // Read and copy the file
+  ssize_t bytesRead;
+  string valueString = "";
+  int current_line_count = -1;
+
+  // While we haven't reached the end of the file...
+  while( bytesRead = read(textID, &textBuffer, sizeof(char)) > 0)
+    {
+      // If we encounter a newline, increment current_line_count
+      if(textBuffer == '\n') current_line_count++; 
+      
+      // If we've reached the appropriate line_number, read the entire line and return it
+      if(current_line_count == line_number)
+	{
+	  // While we haven't reached a new line...
+	  while(textBuffer != '\n')
+	    {
+	      // Add the current char in textBuffer to our final string
+	      valueString += textBuffer;
+	      if(read(textID, &textBuffer, sizeof(char)) == 0)    break;
+	    }
+	}
+    } 
+
+  if(bytesRead < 0)
+    {
+      perror("Failed to read .keys file.");
+      exit(EXIT_FAILURE);
+    }
+
+  close(textID);
+  return valueString;
+  
 }
 
 string retrieveKeyAndCopyToFile(string retreive_key,string  file)
