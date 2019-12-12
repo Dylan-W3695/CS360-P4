@@ -6,6 +6,10 @@
 #include <list>
 #include <unistd.h>
 #include <getopt.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <bits/stdc++.h>
 
 using namespace std;
 
@@ -193,24 +197,81 @@ queue<string> handleArgs(int argc, char** argv){
 }
 
 int openWriteFile(string file){
-    int wFileDescriptor = open(file, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
+
+    int wFileDescriptor = open(file.c_str(), O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
     if (wFileDescriptor < 0){
 	cerr << "failed to open " << file;
 	exit(EXIT_FAILURE);
     }
     return wFileDescriptor;
 }
+
+int openReadFile(string file){
+    int rFileDescriptor = open(file, O_RDONLY);
+    if(rFileDescriptor == -1){
+	cerr << "failed to open input file: "<< file;
+	exit(EXIT_FAILURE);
+    }
+    return rFileDescriptor;
+}
+
   
 void storeKeyAndValue(string store_key,string value)
 {
   cout << "Reached store Key and Value" << endl;
   int keyFileDescriptor = openWriteFile(keyFile);
   int valueFileDescriptor = openWriteFile(valueFile);
+
+  int keyLength = store_key.length();
+  char key_array[keyLength + 2];
+  strcpy(key_array, store_key.c_str());
+
+  for(int i = 0; i < keyLength; i ++){
+      int writeStat = write(keyFileDescriptor, &key_array[i], sizeof(char));
+      if(writeStat == -1){
+	  cerr << ("Failed to Write Key");
+	  exit(EXIT_FAILURE);
+      }
+  }
+
+
+  int valueLength = value.length();
+  char value_array[valueLength + 1];
+  strcpy(value_array, value.c_str());
+
+  for(int i = 0; i < valueLength; i ++){
+      int writeStat = write(valueFileDescriptor, &value_array[i], sizeof(char));
+      if(writeStat == -1){
+          cerr << ("Failed to Write value");
+          exit(EXIT_FAILURE);
+      }
+  }
+
+
 }
 
 void storeKeyAndFileContents(string store_key,string file)
 {
   cout << "Reached store Key and File" <<endl; 
+  int wKeyFileDescriptor = openWriteFile(keyFile);
+  int wValueFileDescriptor = openWriteFile(valueFile);
+
+  int rValueFileDescriptor = openReadFile(file);
+
+  int keyLength = store_key.length();
+  char key_array[keyLength + 2];
+  strcpy(key_array, store_key.c_str());
+
+  for(int i = 0; i < keyLength; i ++){
+      int writeStat = write(keyFileDescriptor, &key_array[i], sizeof(char));
+      if(writeStat == -1){
+          cerr << ("Failed to Write Key");
+          exit(EXIT_FAILURE);
+      }
+  }
+
+	
+
 }
 
 string retrieveKeyValue(string retrieve_key)
