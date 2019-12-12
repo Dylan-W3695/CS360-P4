@@ -207,7 +207,7 @@ int openWriteFile(string file){
 }
 
 int openReadFile(string file){
-    int rFileDescriptor = open(file, O_RDONLY);
+  int rFileDescriptor = open(file.c_str(), O_RDONLY);
     if(rFileDescriptor == -1){
 	cerr << "failed to open input file: "<< file;
 	exit(EXIT_FAILURE);
@@ -247,7 +247,9 @@ void storeKeyAndValue(string store_key,string value)
       }
   }
 
-  write(keyFileDescriptor, " \n", 2);
+  write(keyFileDescriptor, "\n", 2);
+  write(valueFileDescriptor, "\n", 2);
+
   
   close(keyFileDescriptor);
   close(valueFileDescriptor);
@@ -267,7 +269,7 @@ void storeKeyAndFileContents(string store_key,string file)
   strcpy(key_array, store_key.c_str());
 
   for(int i = 0; i < keyLength; i ++){
-      int writeStat = write(keyFileDescriptor, &key_array[i], sizeof(char));
+      int writeStat = write(wKeyFileDescriptor, &key_array[i], sizeof(char));
       if(writeStat == -1){
           cerr << ("Failed to Write Key");
           exit(EXIT_FAILURE);
