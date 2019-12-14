@@ -278,8 +278,14 @@ void storeKeyAndFileContents(string store_key,string file)
       }
   }
 
-	
-
+  int bytesRead;
+  char byte;
+  while((bytesRead = read(rValueFileDescriptor, &byte, sizeof(char))) > 0){
+      if(write(wValueFileDescriptor, &byte, sizeof(char))  == -1){
+	  cerr << "Failed to write file";
+	  exit(EXIT_FAILURE);
+      }
+  }
 }
 
 string retrieveKeyValue(string retrieve_key)
