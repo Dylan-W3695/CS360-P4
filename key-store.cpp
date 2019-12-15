@@ -264,27 +264,35 @@ void storeKeyAndFileContents(string store_key,string file)
   int wKeyFileDescriptor = openWriteFile(keyFile);
   int wValueFileDescriptor = openWriteFile(valueFile);
 
-  int rValueFileDescriptor = openReadFile(file);
+  if(readKeyFile(keyFile, store_key) == -1){
 
-  int keyLength = store_key.length();
-  char key_array[keyLength + 2];
-  strcpy(key_array, store_key.c_str());
+      int rValueFileDescriptor = openReadFile(file);
 
-  for(int i = 0; i < keyLength; i ++){
-      int writeStat = write(wKeyFileDescriptor, &key_array[i], sizeof(char));
-      if(writeStat == -1){
-          cerr << ("Failed to Write Key");
-          exit(EXIT_FAILURE);
+      int keyLength = store_key.length();
+      char key_array[keyLength + 2];
+      strcpy(key_array, store_key.c_str());
+
+      for(int i = 0; i < keyLength; i ++){
+	  int writeStat = write(wKeyFileDescriptor, &key_array[i], sizeof(char));
+	  if(writeStat == -1){
+	      cerr << ("Failed to Write Key");
+	      exit(EXIT_FAILURE);
+	  }
       }
-  }
 
-  int bytesRead;
-  char byte;
-  while((bytesRead = read(rValueFileDescriptor, &byte, sizeof(char))) > 0){
-      if(write(wValueFileDescriptor, &byte, sizeof(char))  == -1){
-	  cerr << "Failed to write file";
-	  exit(EXIT_FAILURE);
+      int bytesRead;
+      char byte;
+      while((bytesRead = read(rValueFileDescriptor, &byte, sizeof(char))) > 0){
+	  if(write(wValueFileDescriptor, &byte, sizeof(char))  == -1){
+	      cerr << "Failed to write file";
+	      exit(EXIT_FAILURE);
+	  }
       }
+   write(wKeyFileDescriptor, "\n", 1);
+   write(wValueFileDescriptor, "\n", 1);
+
+  }else{
+      cout << "key already exists" << endl;
   }
 }
 
@@ -310,6 +318,7 @@ string retrieveKeyValue(string retrieve_key)
 int readKeyFile(string keyFileDescriptor, string key )
 {
   int line_number = -1;
+  int final_line = -1;
   
   // Open, read, and copy the picture
   // Open bunny.jpg then copy it into bunny_copy.jpg
@@ -360,6 +369,7 @@ int readKeyFile(string keyFileDescriptor, string key )
       else
 	{
 	  still_searching = false;
+	  final_line = line_number;
 	}
     }  
 
@@ -371,7 +381,7 @@ int readKeyFile(string keyFileDescriptor, string key )
     }
 
   close(textID);
-  return line_number;
+  return final_line;
 }
 
 string getValue(string valueFileDescriptor, int line_number)
@@ -422,7 +432,22 @@ string getValue(string valueFileDescriptor, int line_number)
   
 }
 
-string retrieveKeyAndCopyToFile(string retreive_key,string  file)
+string retrieveKeyAndCopyToFile(string retrieve_key,string  file)
 {
   cout << "reached retrieve key and file" << endl;
+  string value = retrieveKeyValue(retrieve_key);
+
+    int wFileDescriptor = open(file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    if (wFileDescriptor < 0){
+        cerr << "failed to open " << file;
+        exit(EXIT_FAILURE);
+    }
+    const char* valuestr = value.c_str();
+    for(int i = 0; i < value.length(); i++){
+	if(write(wFileDescriptor, &valuestr[i], sizeof(char)) == -1){
+	    cerr << "Failed to write to file: " << file;
+	    exit(EXIT_FAILURE);
+	}
+    }
+    return value;
 }
