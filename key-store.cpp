@@ -1,3 +1,8 @@
+// Brooklyn Welsh & Dylan Wahl
+// Dr. Meehean
+// CS 360 Operating Systems
+// Fall 2019
+
 #include <iostream>
 #include <pthread.h>
 #include <string>
@@ -17,7 +22,7 @@ queue<string> handleArgs(int argc, char** argv);
 void storeKeyAndValue(string store_key, string value);
 void storeKeyAndFileContents(string store_key, string file);
 string retrieveKeyValue(string retrieve_key);
-string retrieveKeyAndCopyToFile(string retreive_key, string file);
+void retrieveKeyAndCopyToFile(string retreive_key, string file);
 int openWriteFile(string file);
 int readKeyFile(string keyFileDescriptor, string key );
 string getValue(string valueFileDescriptor, int line_number);
@@ -101,7 +106,8 @@ int main(int argc, char** argv)
       // Retrieve
         if(file == "")
 	{
-	  retrieveKeyValue(retrieve_key); 
+	 string contents =  retrieveKeyValue(retrieve_key);
+	 cout << endl << "I've retrieved the following value associated with " << retrieve_key << " : "  <<  contents << endl;
 	}
 
 	else if(file != "")
@@ -220,51 +226,61 @@ int openReadFile(string file){
   
 void storeKeyAndValue(string store_key,string value)
 {
-  cout << "Reached store Key and Value" << endl;
   int keyFileDescriptor = openWriteFile(keyFile);
   int valueFileDescriptor = openWriteFile(valueFile);
 
-  int keyLength = store_key.length();
-  char key_array[keyLength + 2];
-  strcpy(key_array, store_key.c_str());
-
-  for(int i = 0; i < keyLength; i ++){
-      int writeStat = write(keyFileDescriptor, &key_array[i], sizeof(char));
-      if(writeStat == -1){
-	  cerr << ("Failed to Write Key");
-	  exit(EXIT_FAILURE);
-      }
-  }
-
-
-  int valueLength = value.length();
-  char value_array[valueLength];
-  strcpy(value_array, value.c_str());
-
-  for(int i = 0; i < valueLength; i ++){
-      int writeStat = write(valueFileDescriptor, &value_array[i], sizeof(char));
-      if(writeStat == -1){
-          cerr << ("Failed to Write value");
-          exit(EXIT_FAILURE);
-      }
-  }
-
-   write(keyFileDescriptor, "\n", 1);
-   write(valueFileDescriptor, "\n", 1);
-
+  if(readKeyFile(keyFile, store_key) == -1)
+    {
+      int keyLength = store_key.length();
+      char key_array[keyLength + 2];
+      strcpy(key_array, store_key.c_str());
+      
+      for(int i = 0; i < keyLength; i ++)
+	{
+	  int writeStat = write(keyFileDescriptor, &key_array[i], sizeof(char));
+	  if(writeStat == -1)
+	    {
+	      cerr << ("Failed to Write Key");
+	      exit(EXIT_FAILURE);
+	    }
+	}
+      
+      
+      int valueLength = value.length();
+      char value_array[valueLength];
+      strcpy(value_array, value.c_str());
   
+      for(int i = 0; i < valueLength; i ++)
+	{
+	  int writeStat = write(valueFileDescriptor, &value_array[i], sizeof(char));
+	  if(writeStat == -1)
+	    {
+	      cerr << ("Failed to Write value");
+	      exit(EXIT_FAILURE);
+	    }
+	}
+
+      write(keyFileDescriptor, "\n", 1);
+      write(valueFileDescriptor, "\n", 1);
+    }
+  else
+    {
+      cout << "Cannot store duplicate keys." << endl; 
+    }
+    
   close(keyFileDescriptor);
   close(valueFileDescriptor);
-
+      
 }
 
+  
 void storeKeyAndFileContents(string store_key,string file)
 {
-  cout << "Reached store Key and File" <<endl; 
   int wKeyFileDescriptor = openWriteFile(keyFile);
   int wValueFileDescriptor = openWriteFile(valueFile);
 
-  if(readKeyFile(keyFile, store_key) == -1){
+  if(readKeyFile(keyFile, store_key) == -1)
+    {
 
       int rValueFileDescriptor = openReadFile(file);
 
@@ -272,28 +288,53 @@ void storeKeyAndFileContents(string store_key,string file)
       char key_array[keyLength + 2];
       strcpy(key_array, store_key.c_str());
 
-      for(int i = 0; i < keyLength; i ++){
+      for(int i = 0; i < keyLength; i ++)
+	{
 	  int writeStat = write(wKeyFileDescriptor, &key_array[i], sizeof(char));
-	  if(writeStat == -1){
+	  if(writeStat == -1)
+	    {
 	      cerr << ("Failed to Write Key");
 	      exit(EXIT_FAILURE);
-	  }
-      }
+	    }
+	}
 
       int bytesRead;
       char byte;
-      while((bytesRead = read(rValueFileDescriptor, &byte, sizeof(char))) > 0){
-	  if(write(wValueFileDescriptor, &byte, sizeof(char))  == -1){
-	      cerr << "Failed to write file";
-	      exit(EXIT_FAILURE);
-	  }
-      }
-   write(wKeyFileDescriptor, "\n", 1);
-   write(wValueFileDescriptor, "\n", 1);
+      char nullChar = '\0';
+      while((bytesRead = read(rValueFileDescriptor, &byte, sizeof(char))) > 0)
+	{
+	  // if byte != '/n'
+	  if(byte != '\n')
+	    {
+	      if(write(wValueFileDescriptor, &byte, sizeof(char))  == -1)
+		{
+		  cerr << "Failed to write file";
+		  exit(EXIT_FAILURE);
+		}
+	    }
+	  else
+	    {
+	      if(write(wValueFileDescriptor, &nullChar, sizeof(char)) == -1)
+		{
+		  cerr << "Failed to write file";
+		  exit(EXIT_FAILURE); 
+		}
+		
+	    }
+	     
+	}
+      write(wKeyFileDescriptor, "\n", 1);
+      write(wValueFileDescriptor, "\n", 1);
+      close(rValueFileDescriptor);
 
-  }else{
-      cout << "key already exists" << endl;
-  }
+    }
+  else
+    {
+      cout << "Cannot store duplicate keys." << endl;
+    }
+  
+  close(wKeyFileDescriptor);
+  close(wValueFileDescriptor);
 }
 
 string retrieveKeyValue(string retrieve_key)
@@ -309,17 +350,13 @@ string retrieveKeyValue(string retrieve_key)
   //Then, get the value that is line_number newlines down inside the .values file
   string value = getValue(valueFile, line_number);
 
-  
-  cout << "reached retrieve Key and Value," << endl;
-  cout << endl << "I've retrieved the following value associated with " << retrieve_key << " : "  <<  value << endl;
   return value;
 }
 
 int readKeyFile(string keyFileDescriptor, string key )
 {
-  int line_number = -1;
-  int final_line = -1;
-  
+  int line_number = 0;
+   
   // Open, read, and copy the picture
   // Open bunny.jpg then copy it into bunny_copy.jpg
   char textBuffer;
@@ -369,7 +406,8 @@ int readKeyFile(string keyFileDescriptor, string key )
       else
 	{
 	  still_searching = false;
-	  final_line = line_number;
+	  //final_line = line_number;
+	  //line_number++;
 	}
     }  
 
@@ -380,8 +418,13 @@ int readKeyFile(string keyFileDescriptor, string key )
       exit(EXIT_FAILURE);
     }
 
+  if(still_searching == true)
+    {
+      line_number = -1; 
+    }
+
   close(textID);
-  return final_line;
+  return line_number;
 }
 
 string getValue(string valueFileDescriptor, int line_number)
@@ -400,24 +443,39 @@ string getValue(string valueFileDescriptor, int line_number)
   // Read and copy the file
   ssize_t bytesRead;
   string valueString = "";
-  int current_line_count = -1;
+  int current_line_count = 0;
+  bool stringComplete = false;
 
   // While we haven't reached the end of the file...
-  while( bytesRead = read(textID, &textBuffer, sizeof(char)) > 0)
+  while( bytesRead = read(textID, &textBuffer, sizeof(char)) > 0 && !stringComplete)
     {
       // If we encounter a newline, increment current_line_count
-      if(textBuffer == '\n') current_line_count++; 
-      
+      if(textBuffer == '\n')
+	{
+	  current_line_count++;
+	  bytesRead = read(textID, &textBuffer, sizeof(char));
+	}
+
+            
       // If we've reached the appropriate line_number, read the entire line and return it
       if(current_line_count == line_number)
 	{
 	  // While we haven't reached a new line...
 	  while(textBuffer != '\n')
 	    {
-	      // Add the current char in textBuffer to our final string
-	      valueString += textBuffer;
-	      if(read(textID, &textBuffer, sizeof(char)) == 0)    break;
+	      if(textBuffer == '\0')
+		{
+		  valueString += '\n';
+		  if(read(textID, &textBuffer, sizeof(char)) == 0)    break;
+		}
+	      else
+		{
+		  // Add the current char in textBuffer to our final string
+		  valueString += textBuffer;
+		  if(read(textID, &textBuffer, sizeof(char)) == 0)    break;
+		}
 	    }
+	  stringComplete = true;
 	}
     } 
 
@@ -432,22 +490,38 @@ string getValue(string valueFileDescriptor, int line_number)
   
 }
 
-string retrieveKeyAndCopyToFile(string retrieve_key,string  file)
+void retrieveKeyAndCopyToFile(string retrieve_key,string  file)
 {
-  cout << "reached retrieve key and file" << endl;
   string value = retrieveKeyValue(retrieve_key);
+  char newLineChar = '\n';
 
-    int wFileDescriptor = open(file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-    if (wFileDescriptor < 0){
-        cerr << "failed to open " << file;
-        exit(EXIT_FAILURE);
+  int wFileDescriptor = open(file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+  if (wFileDescriptor < 0)
+    {
+      cerr << "failed to open " << file;
+      exit(EXIT_FAILURE);
     }
-    const char* valuestr = value.c_str();
-    for(int i = 0; i < value.length(); i++){
-	if(write(wFileDescriptor, &valuestr[i], sizeof(char)) == -1){
-	    cerr << "Failed to write to file: " << file;
-	    exit(EXIT_FAILURE);
+  const char* valuestr = value.c_str();
+  for(int i = 0; i < value.length(); i++)
+    {
+      if(valuestr[i] != '\0')
+	{
+	  if(write(wFileDescriptor, &valuestr[i], sizeof(char)) == -1)
+	    {
+	      cerr << "Failed to write to file: " << file;
+	      exit(EXIT_FAILURE);
+	    }
 	}
+      else
+	{
+	  if(write(wFileDescriptor, &newLineChar, sizeof(char)) == -1)
+	    {
+	      cerr << "Failed to write to file: " << file;
+	      exit(EXIT_FAILURE);
+	    }
+	
+	}
+      
     }
-    return value;
+  
 }
